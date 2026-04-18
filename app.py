@@ -432,7 +432,7 @@ if go_load or st.session_state.get('loaded'):
                 c1,c2=st.columns(2)
                 for col,(xc,yc,xl,yl,title,sub) in zip([c1,c2],row_pair):
                     src=stats if xc in stats.columns else U.sample(min(3000,len(U)),random_state=42)
-                    fig_c=px.scatter(src,x=xc,y=yc,color=yc,color_continuous_scale=SCALE2,
+                    fig_c=px.scatter(src,x=xc,y=yc,trendline='ols',color=yc,color_continuous_scale=SCALE2,
                         opacity=0.55,labels={xc:xl,yc:yl},hover_data=['Movie-Title'] if 'Movie-Title' in src.columns else None)
                     fig_c.update_traces(marker=dict(size=5))
                     fig_c.update_layout(**CL(300),coloraxis_showscale=False)
@@ -492,9 +492,8 @@ if go_load or st.session_state.get('loaded'):
 
         st.markdown('</div>',unsafe_allow_html=True)
 
-    except Exception as e:
-        st.error(f"❌ Error loading dashboard: {type(e).__name__}: {e}")
-        st.info("Make sure Movies.csv, Ratings.csv and Users.csv are in the same folder as app.py on GitHub.")
+    except FileNotFoundError as e:
+        st.error(f"File not found: {e}\n\nCheck the paths in the Configure panel above.")
 
 else:
     st.markdown(f"""
