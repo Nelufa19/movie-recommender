@@ -5,753 +5,504 @@ import scipy.sparse
 import sklearn.metrics as skm
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import warnings
 warnings.filterwarnings('ignore')
 
-# ─────────────────────────────────────────────
-# PAGE CONFIG — Amazon Prime theme
-# ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="Netflix Movie Recommender",
+    page_title="CineAI · Movie Recommender",
     page_icon="🎬",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# ─────────────────────────────────────────────
-# AMAZON PRIME CSS THEME
-# ─────────────────────────────────────────────
 st.markdown("""
 <style>
-/* ── Base ── */
-html, body, [class*="css"] {
-    font-family: 'Amazon Ember', Arial, sans-serif;
-    background-color: #0F171E;
-    color: #FFFFFF;
-}
-.stApp { background-color: #0F171E; }
-
-/* ── Sidebar ── */
-section[data-testid="stSidebar"] {
-    background-color: #1A242F;
-    border-right: 1px solid #00A8E1;
-}
-section[data-testid="stSidebar"] * { color: #FFFFFF !important; }
-
-/* ── Metric cards ── */
-[data-testid="metric-container"] {
-    background: linear-gradient(135deg, #1A242F, #0F171E);
-    border: 1px solid #00A8E1;
-    border-radius: 10px;
-    padding: 16px;
-}
-[data-testid="metric-container"] label { color: #00A8E1 !important; font-size: 13px; }
-[data-testid="metric-container"] [data-testid="stMetricValue"] {
-    color: #FFFFFF !important; font-size: 28px; font-weight: 700;
-}
-
-/* ── Headers ── */
-h1 { color: #00A8E1 !important; font-size: 2rem !important; }
-h2 { color: #00A8E1 !important; }
-h3 { color: #FFFFFF !important; }
-
-/* ── Tabs ── */
-.stTabs [data-baseweb="tab-list"] { background-color: #1A242F; border-radius: 8px; }
-.stTabs [data-baseweb="tab"] { color: #AAAAAA !important; }
-.stTabs [aria-selected="true"] { color: #00A8E1 !important; border-bottom: 2px solid #00A8E1; }
-
-/* ── Buttons ── */
-.stButton > button {
-    background: linear-gradient(135deg, #00A8E1, #0073A8);
-    color: #FFFFFF; border: none; border-radius: 6px;
-    font-weight: 600; padding: 10px 24px;
-    transition: all 0.2s;
-}
-.stButton > button:hover { background: linear-gradient(135deg, #0073A8, #005580); }
-
-/* ── Selectbox / Slider ── */
-.stSelectbox > div > div, .stNumberInput > div > div {
-    background-color: #1A242F !important; color: #FFFFFF !important;
-    border: 1px solid #00A8E1 !important; border-radius: 6px;
-}
-.stSlider > div { color: #00A8E1; }
-
-/* ── DataFrames ── */
-.stDataFrame { border: 1px solid #00A8E1; border-radius: 8px; }
-
-/* ── Divider ── */
-hr { border-color: #00A8E1; }
-
-/* ── Success / Info boxes ── */
-.stSuccess { background-color: #1A3A2A; border-left: 4px solid #00C853; }
-.stInfo    { background-color: #1A2A3A; border-left: 4px solid #00A8E1; }
-
-/* ── Card style ── */
-.prime-card {
-    background: #1A242F;
-    border: 1px solid #00A8E1;
-    border-radius: 10px;
-    padding: 16px 20px;
-    margin-bottom: 12px;
-}
-.prime-title {
-    font-size: 1.5rem; font-weight: 700;
-    color: #00A8E1; margin-bottom: 4px;
-}
-.prime-sub { color: #AAAAAA; font-size: 0.85rem; }
-
-/* ── Hero banner ── */
-.hero-banner {
-    background: linear-gradient(135deg, #0F171E 0%, #1A3A5C 50%, #00A8E1 100%);
-    border-radius: 12px; padding: 32px 40px; margin-bottom: 24px;
-    border: 1px solid #00A8E1;
-}
-.hero-banner h1 { font-size: 2.4rem !important; margin: 0; }
-.hero-banner p  { color: #CCCCCC; margin: 8px 0 0; font-size: 1.05rem; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body,[class*="css"],.stApp{font-family:'Inter',sans-serif!important;background-color:#08141E!important;color:#F0F4F8!important}
+.stApp{background:#08141E!important}
+.block-container{padding:0!important;max-width:100%!important}
+.main>div{padding:0!important}
+#MainMenu,footer,header{visibility:hidden}
+[data-testid="stToolbar"]{display:none}
+[data-testid="collapsedControl"]{display:none}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#08141E}::-webkit-scrollbar-thumb{background:#1C6EA4;border-radius:3px}
+.topnav{background:linear-gradient(180deg,#0D1F2D,transparent);padding:18px 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:999;border-bottom:1px solid rgba(28,110,164,0.2);backdrop-filter:blur(12px)}
+.logo{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,#1C6EA4,#00C9FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.5px}
+.logo span{-webkit-text-fill-color:#FF6B35}
+.nav-links{display:flex;gap:32px}
+.nav-link{color:#8899AA;font-size:0.875rem;font-weight:500;cursor:pointer;transition:color 0.2s}
+.nav-link:hover,.nav-link.active{color:#00C9FF}
+.hero{background:linear-gradient(135deg,#08141E 0%,#0D2137 40%,#102840 70%,#08141E 100%);padding:56px 40px 48px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-50%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(28,110,164,0.15) 0%,transparent 70%);pointer-events:none}
+.hero-eyebrow{font-size:0.75rem;font-weight:600;color:#1C6EA4;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
+.hero-title{font-size:clamp(1.8rem,4vw,3rem);font-weight:800;line-height:1.15;letter-spacing:-1px;color:#F0F4F8;margin-bottom:14px}
+.hero-title .accent{background:linear-gradient(135deg,#1C6EA4,#00C9FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{font-size:0.95rem;color:#6B8294;max-width:500px;line-height:1.7;margin-bottom:32px}
+.hero-stats{display:flex;gap:36px;flex-wrap:wrap}
+.hero-stat-val{font-size:1.5rem;font-weight:700;color:#F0F4F8;letter-spacing:-0.5px;line-height:1}
+.hero-stat-lbl{font-size:0.72rem;color:#6B8294;font-weight:500;margin-top:4px}
+.hero-stat-sep{width:1px;background:rgba(255,255,255,0.08);align-self:stretch}
+.content{padding:0 40px 60px}
+.section-header{display:flex;align-items:baseline;gap:12px;margin:36px 0 18px}
+.section-title{font-size:1.1rem;font-weight:700;color:#F0F4F8;letter-spacing:-0.3px;white-space:nowrap}
+.section-sub{font-size:0.78rem;color:#4A6275}
+.section-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(28,110,164,0.3),transparent);margin-left:8px}
+.kpi-card{background:#0D1F2D;border:1px solid rgba(28,110,164,0.2);border-radius:14px;padding:20px 22px;position:relative;overflow:hidden;transition:border-color 0.2s,transform 0.2s}
+.kpi-card:hover{border-color:rgba(28,110,164,0.6);transform:translateY(-2px)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#1C6EA4,#00C9FF);opacity:0.6}
+.kpi-icon{font-size:1.3rem;margin-bottom:10px}
+.kpi-val{font-size:1.65rem;font-weight:700;color:#F0F4F8;letter-spacing:-0.5px;line-height:1}
+.kpi-lbl{font-size:0.7rem;color:#4A6275;font-weight:500;margin-top:6px;text-transform:uppercase;letter-spacing:0.8px}
+.kpi-delta{font-size:0.72rem;color:#2ECC71;font-weight:600;margin-top:4px}
+.chart-card{background:#0D1F2D;border:1px solid rgba(28,110,164,0.15);border-radius:16px;padding:22px;transition:border-color 0.2s;margin-bottom:4px}
+.chart-card:hover{border-color:rgba(28,110,164,0.35)}
+.chart-title{font-size:0.88rem;font-weight:600;color:#C5D5E0;margin-bottom:3px}
+.chart-sub{font-size:0.73rem;color:#4A6275;margin-bottom:14px}
+.movie-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-top:8px}
+.movie-card{background:#0A1929;border:1px solid rgba(28,110,164,0.15);border-radius:12px;overflow:hidden;transition:transform 0.25s,border-color 0.25s,box-shadow 0.25s;cursor:pointer}
+.movie-card:hover{transform:translateY(-6px) scale(1.02);border-color:#1C6EA4;box-shadow:0 20px 40px rgba(0,0,0,0.5)}
+.movie-poster{width:100%;aspect-ratio:2/3;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:2.8rem;position:relative;overflow:hidden}
+.movie-poster::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(8,20,30,0.9) 100%)}
+.movie-poster-id{position:absolute;bottom:8px;left:10px;font-size:0.62rem;color:rgba(255,255,255,0.35);font-weight:500;z-index:2}
+.movie-body{padding:12px}
+.movie-title-card{font-size:0.8rem;font-weight:600;color:#D0E0EE;line-height:1.4;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.movie-year{font-size:0.68rem;color:#4A6275;font-weight:500}
+.movie-badge{display:inline-block;background:rgba(28,110,164,0.2);color:#00C9FF;font-size:0.63rem;padding:2px 8px;border-radius:99px;font-weight:600;margin-top:6px;border:1px solid rgba(0,201,255,0.2)}
+.rec-panel{background:#0D1F2D;border:1px solid rgba(28,110,164,0.2);border-radius:16px;padding:28px}
+.corr-badge{display:inline-flex;align-items:center;gap:6px;background:#0A1929;border:1px solid rgba(28,110,164,0.25);border-radius:8px;padding:7px 13px;font-size:0.78rem;color:#C5D5E0;font-weight:500;margin-top:8px}
+.corr-val{font-weight:700;color:#00C9FF;font-size:0.88rem}
+.stTextInput>div>div>input{background:#0A1929!important;color:#F0F4F8!important;border:1px solid rgba(28,110,164,0.3)!important;border-radius:10px!important;padding:10px 14px!important;font-family:'Inter',sans-serif!important}
+.stTextInput>div>div>input:focus{border-color:#1C6EA4!important;box-shadow:0 0 0 3px rgba(28,110,164,0.15)!important}
+.stTextInput>div>div>input::placeholder{color:#3A5265!important}
+.stSelectbox>div>div{background:#0A1929!important;border:1px solid rgba(28,110,164,0.3)!important;border-radius:10px!important;color:#F0F4F8!important}
+.stNumberInput>div>div>input{background:#0A1929!important;color:#F0F4F8!important;border:1px solid rgba(28,110,164,0.3)!important;border-radius:10px!important;font-family:'Inter',sans-serif!important}
+.stButton>button{background:linear-gradient(135deg,#1C6EA4,#0E4C78)!important;color:#FFFFFF!important;border:none!important;border-radius:10px!important;padding:11px 24px!important;font-weight:600!important;font-size:0.875rem!important;font-family:'Inter',sans-serif!important;transition:all 0.2s!important;box-shadow:0 4px 15px rgba(28,110,164,0.3)!important;width:100%}
+.stButton>button:hover{background:linear-gradient(135deg,#2280C0,#1C6EA4)!important;box-shadow:0 6px 20px rgba(28,110,164,0.4)!important;transform:translateY(-1px)!important}
+.stTabs [data-baseweb="tab-list"]{background:transparent!important;border-bottom:1px solid rgba(28,110,164,0.15)!important;gap:0!important;padding:0!important}
+.stTabs [data-baseweb="tab"]{background:transparent!important;color:#4A6275!important;font-weight:500!important;font-size:0.875rem!important;padding:13px 22px!important;border-radius:0!important;border-bottom:2px solid transparent!important;font-family:'Inter',sans-serif!important}
+.stTabs [aria-selected="true"]{color:#00C9FF!important;border-bottom:2px solid #1C6EA4!important;background:transparent!important}
+.stTabs [data-baseweb="tab-panel"]{padding:28px 0 0!important}
+.stSlider>div>div>div{background:#1C6EA4!important}
+.stSlider label{color:#8899AA!important;font-size:0.8rem!important}
+[data-testid="stDataFrame"]{border:1px solid rgba(28,110,164,0.2)!important;border-radius:12px!important;overflow:hidden}
+hr{border-color:rgba(28,110,164,0.15)!important}
+.stSuccess{background:rgba(46,204,113,0.08)!important;border-left:3px solid #2ECC71!important;border-radius:8px!important}
+.stInfo{background:rgba(28,110,164,0.08)!important;border-left:3px solid #1C6EA4!important;border-radius:8px!important}
+.stWarning{background:rgba(255,107,53,0.08)!important;border-left:3px solid #FF6B35!important;border-radius:8px!important}
+.stDownloadButton>button{background:transparent!important;color:#1C6EA4!important;border:1px solid rgba(28,110,164,0.4)!important;border-radius:8px!important;font-size:0.8rem!important;padding:7px 14px!important;width:auto!important;box-shadow:none!important}
 </style>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# PLOTLY THEME DEFAULTS
-# ─────────────────────────────────────────────
-PRIME_BLUE   = "#00A8E1"
-PRIME_DARK   = "#0F171E"
-PRIME_CARD   = "#1A242F"
-PRIME_ACCENT = "#FF9900"   # Amazon orange accent
+BG="#0D1F2D"; BG2="#0A1929"; BLUE="#1C6EA4"; CYAN="#00C9FF"
+ORANGE="#FF6B35"; GREEN="#2ECC71"; TEXT="#C5D5E0"; MUTED="#4A6275"; GRID="#0F2336"
+SCALE=[[0,BG2],[0.5,BLUE],[1,CYAN]]
+SCALE2=[[0,"#8B0000"],[0.5,BLUE],[1,"#00FF88"]]
 
-CHART_LAYOUT = dict(
-    paper_bgcolor=PRIME_CARD,
-    plot_bgcolor=PRIME_CARD,
-    font=dict(color="#FFFFFF", family="Arial"),
-    title_font=dict(color=PRIME_BLUE, size=16),
-    xaxis=dict(gridcolor="#2A3A4A", color="#AAAAAA"),
-    yaxis=dict(gridcolor="#2A3A4A", color="#AAAAAA"),
-    legend=dict(bgcolor=PRIME_DARK, bordercolor=PRIME_BLUE, borderwidth=1),
-    margin=dict(t=50, b=40, l=40, r=20),
-)
+def CL(h=360,**kw):
+    return dict(paper_bgcolor=BG,plot_bgcolor=BG,
+                font=dict(family="Inter",color=TEXT,size=12),
+                xaxis=dict(gridcolor=GRID,linecolor=GRID,color=MUTED,tickfont=dict(size=11)),
+                yaxis=dict(gridcolor=GRID,linecolor=GRID,color=MUTED,tickfont=dict(size=11)),
+                legend=dict(bgcolor="rgba(0,0,0,0)",font=dict(color=TEXT,size=11)),
+                margin=dict(t=40,b=36,l=46,r=16),height=h,**kw)
 
-# ─────────────────────────────────────────────
-# DATA LOADING
-# ─────────────────────────────────────────────
-@st.cache_data(show_spinner=False)
-def load_data(movies_path, ratings_path, users_path):
-    moviesData  = pd.read_csv(movies_path,  converters={'Year-Of-Release': lambda x: pd.to_numeric(x, errors='coerce')}).dropna()
-    moviesData['Year-Of-Release'] = moviesData['Year-Of-Release'].astype(int)
-    ratingsData = pd.read_csv(ratings_path).dropna()
-    ratingsData['Movie-Rating'] = ratingsData['Movie-Rating'].astype(int)
-    userData    = pd.read_csv(users_path).dropna()
-    return moviesData, ratingsData, userData
+ICONS=["🎬","🎥","🍿","🎭","🎞️","🌟","🎦","📽️","🎪","🎠","🌌","🔮"]
+PALETTES=[("0D2137","1C4E7A"),("1A0A2E","4A1880"),("0A2218","1A6644"),
+          ("2A0A0A","7A2020"),("1A1A0A","6A6A20"),("0A1A2A","1A5A7A")]
+def icon(mid): return ICONS[int(mid)%len(ICONS)]
+def grad(mid): a,b=PALETTES[int(mid)%len(PALETTES)]; return f"#{a}",f"#{b}"
 
 @st.cache_data(show_spinner=False)
-def build_combined(_moviesData, _ratingsData, _userData):
-    combined = pd.merge(_ratingsData, _moviesData, on='Movie-ID')
-    combined = pd.merge(combined, _userData, on='User-ID')
-    combined = combined.drop('Year-Of-Release', axis=1)
-    combined = combined[['User-ID', 'Movie-Rating', 'Movie-ID', 'Movie-Title', 'Num-Ratings', 'Avg-Rating']]
-    MovieID_dict = {mid: i for i, mid in enumerate(combined['Movie-ID'].unique())}
-    combined['Movie-ID-Key'] = combined['Movie-ID'].map(MovieID_dict)
-    return combined, MovieID_dict
+def load(mp,rp,up):
+    M=pd.read_csv(mp,converters={'Year-Of-Release':lambda x:pd.to_numeric(x,errors='coerce')}).dropna()
+    M['Year-Of-Release']=M['Year-Of-Release'].astype(int)
+    R=pd.read_csv(rp).dropna(); R['Movie-Rating']=R['Movie-Rating'].astype(int)
+    U=pd.read_csv(up).dropna()
+    return M,R,U
+
+@st.cache_data(show_spinner=False)
+def build_combined(_M,_R,_U):
+    df=pd.merge(_R,_M,on='Movie-ID'); df=pd.merge(df,_U,on='User-ID')
+    df=df.drop('Year-Of-Release',axis=1)
+    df=df[['User-ID','Movie-Rating','Movie-ID','Movie-Title','Num-Ratings','Avg-Rating']]
+    d={mid:i for i,mid in enumerate(df['Movie-ID'].unique())}
+    df['Movie-ID-Key']=df['Movie-ID'].map(d)
+    return df,d
 
 @st.cache_resource(show_spinner=False)
-def build_matrix(_combined):
-    return scipy.sparse.coo_matrix((
-        _combined['Movie-Rating'],
-        (_combined['User-ID'], _combined['Movie-ID-Key'])
-    ))
+def build_mat(_df):
+    return scipy.sparse.coo_matrix((_df['Movie-Rating'],(_df['User-ID'],_df['Movie-ID-Key'])))
 
-# ─────────────────────────────────────────────
-# RECOMMENDER FUNCTION
-# ─────────────────────────────────────────────
-def knowledge_based_recommender(combined_df, moviesData, user_id, matrix, n=10):
+def rec(combined,movies,uid,mat,n=12):
     try:
-        sims = skm.pairwise.cosine_similarity(
-            matrix.getrow(user_id), matrix
-        ).ravel()
-        sims[user_id] = 0
-        top_users   = sims.argsort()[::-1][:5]
-        movie_ids   = combined_df.loc[combined_df['User-ID'].isin(top_users)]['Movie-ID']
-        recs        = moviesData[moviesData['Movie-ID'].isin(movie_ids)].drop_duplicates('Movie-ID').head(n)
-        return recs
-    except Exception:
-        return pd.DataFrame()
+        s=skm.pairwise.cosine_similarity(mat.getrow(uid),mat).ravel()
+        s[uid]=0
+        top=s.argsort()[::-1][:5]
+        ids=combined.loc[combined['User-ID'].isin(top),'Movie-ID']
+        return movies[movies['Movie-ID'].isin(ids)].drop_duplicates('Movie-ID').head(n)
+    except: return pd.DataFrame()
 
-# ─────────────────────────────────────────────
-# SIDEBAR
-# ─────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("""
-    <div style='text-align:center; padding:16px 0'>
-        <span style='font-size:2.5rem'>🎬</span>
-        <div style='font-size:1.2rem; font-weight:700; color:#00A8E1'>Movie Recommender</div>
-        <div style='font-size:0.75rem; color:#888'>Netflix Prize Dataset</div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.divider()
-
-    st.markdown("### 📂 Data Paths")
-    movies_path  = st.text_input("Movies.csv",  value="Movies.csv")
-    ratings_path = st.text_input("Ratings.csv", value="Ratings.csv")
-    users_path   = st.text_input("Users.csv",   value="Users.csv")
-
-    load_btn = st.button("🚀 Load Data", use_container_width=True)
-
-    st.divider()
-    st.markdown("### ⚙️ Recommender Settings")
-    n_recs    = st.slider("Number of Recommendations", 5, 20, 10)
-    min_year  = st.slider("Min Release Year", 1950, 2005, 1990)
-    min_rating = st.slider("Min Avg Rating", 1.0, 5.0, 3.0, 0.5)
-
-    st.divider()
-    st.markdown("""
-    <div style='font-size:0.75rem; color:#666; text-align:center'>
-    Built with ❤️ using Streamlit<br>
-    Amazon Prime Theme
-    </div>
-    """, unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────
-# HERO BANNER
-# ─────────────────────────────────────────────
+# ── TOP NAV ──
 st.markdown("""
-<div class='hero-banner'>
-    <h1>🎬 Movie Recommender Dashboard</h1>
-    <p>Knowledge-Based · Reinforcement Learning · Data Analytics · Netflix Prize Dataset</p>
+<div class="topnav">
+  <div class="logo">Cine<span>AI</span></div>
+  <div class="nav-links">
+    <span class="nav-link active">Dashboard</span>
+    <span class="nav-link">Discover</span>
+    <span class="nav-link">Analytics</span>
+  </div>
+  <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#1C6EA4,#00C9FF);
+      display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700">U</div>
 </div>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# LOAD DATA
-# ─────────────────────────────────────────────
-if 'data_loaded' not in st.session_state:
-    st.session_state.data_loaded = False
+# ── FILE CONFIG — hardcoded, no user input needed ──
+mp      = "Movies.csv"
+rp      = "Ratings.csv"
+up      = "Users.csv"
+go_load = True
 
-if load_btn or st.session_state.data_loaded:
+if go_load or st.session_state.get('loaded'):
     try:
-        with st.spinner("Loading data..."):
-            moviesData, ratingsData, userData = load_data(movies_path, ratings_path, users_path)
-            combined_df, MovieID_dict         = build_combined(moviesData, ratingsData, userData)
-            matrix                            = build_matrix(combined_df)
-        st.session_state.data_loaded = True
-        st.success(f"✅  Data loaded — {len(moviesData):,} movies · {len(ratingsData):,} ratings · {len(userData):,} users")
+        with st.spinner("Initialising recommender engine..."):
+            M,R,U=load(mp,rp,up)
+            combined,MovieID_dict=build_combined(M,R,U)
+            mat=build_mat(combined)
+        st.session_state['loaded']=True
+
+        stats=(R.groupby('Movie-ID').agg(total=('Movie-Rating','count'),avg=('Movie-Rating','mean'),
+               std=('Movie-Rating','std')).reset_index().merge(M,on='Movie-ID'))
+        stats['std']=stats['std'].fillna(0)
+
+        # ── HERO ──
+        st.markdown(f"""
+        <div class="hero">
+          <div class="hero-eyebrow">🎬 AI-Powered Movie Intelligence</div>
+          <div class="hero-title">Your personal<br><span class="accent">cinema universe</span></div>
+          <div class="hero-sub">Discover movies you will love using knowledge-based collaborative filtering trained on the Netflix Prize dataset.</div>
+          <div class="hero-stats">
+            <div><div class="hero-stat-val">{len(M):,}</div><div class="hero-stat-lbl">Movies</div></div>
+            <div class="hero-stat-sep"></div>
+            <div><div class="hero-stat-val">{len(R):,}</div><div class="hero-stat-lbl">Ratings</div></div>
+            <div class="hero-stat-sep"></div>
+            <div><div class="hero-stat-val">{len(U):,}</div><div class="hero-stat-lbl">Users</div></div>
+            <div class="hero-stat-sep"></div>
+            <div><div class="hero-stat-val">{R['Movie-Rating'].mean():.2f}⭐</div><div class="hero-stat-lbl">Avg Rating</div></div>
+            <div class="hero-stat-sep"></div>
+            <div><div class="hero-stat-val">{int(M['Year-Of-Release'].min())}–{int(M['Year-Of-Release'].max())}</div><div class="hero-stat-lbl">Year Span</div></div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div class="content">', unsafe_allow_html=True)
+        t1,t2,t3,t4,t5=st.tabs(["  🏠  Overview  ","  🎯  Recommender  ","  📊  Analytics  ","  🔗  Correlations  ","  🗂️  Explorer  "])
+
+        # ════ TAB 1 — OVERVIEW ════
+        with t1:
+            kpis=[("🎬",f"{len(M):,}","Total Movies","Netflix Prize catalogue"),
+                  ("⭐",f"{len(R):,}","Total Ratings",f"Avg {R['Movie-Rating'].mean():.2f} stars"),
+                  ("👥",f"{len(U):,}","Unique Users","Active reviewers"),
+                  ("🏆",f"{stats['avg'].max():.2f}★","Peak Avg Rating","Best-rated movie"),
+                  ("📅",f"{int(M['Year-Of-Release'].max())}","Latest Release",f"From {int(M['Year-Of-Release'].min())}")]
+            cols=st.columns(5)
+            for col,(ic,val,lbl,sub) in zip(cols,kpis):
+                col.markdown(f'<div class="kpi-card"><div class="kpi-icon">{ic}</div><div class="kpi-val">{val}</div><div class="kpi-lbl">{lbl}</div><div class="kpi-delta">{sub}</div></div>',unsafe_allow_html=True)
+
+            st.markdown('<div class="section-header"><div class="section-title">Rating & Catalogue Overview</div><div class="section-line"></div></div>',unsafe_allow_html=True)
+            c1,c2=st.columns(2)
+            rc=R['Movie-Rating'].value_counts().sort_index()
+
+            with c1:
+                fig=go.Figure(go.Bar(x=rc.index,y=rc.values,
+                    marker=dict(color=rc.values,colorscale=SCALE,line=dict(color=BLUE,width=1)),
+                    hovertemplate="<b>%{x} Stars</b><br>%{y:,} ratings<extra></extra>"))
+                fig.update_layout(**CL(320),bargap=0.25)
+                st.markdown('<div class="chart-card"><div class="chart-title">⭐ Rating Distribution</div><div class="chart-sub">How users rate movies across the dataset</div>',unsafe_allow_html=True)
+                st.plotly_chart(fig,use_container_width=True,config=dict(displayModeBar=False))
+                st.markdown('</div>',unsafe_allow_html=True)
+
+            with c2:
+                M2=M.copy(); M2['Decade']=(M2['Year-Of-Release']//10*10).astype(str)+"s"
+                dc=M2['Decade'].value_counts().sort_index()
+                fig2=go.Figure(go.Bar(x=dc.index,y=dc.values,
+                    marker=dict(color=dc.values,colorscale=[[0,BG2],[0.5,BLUE],[1,ORANGE]],
+                                line=dict(color=BG,width=0.5)),
+                    hovertemplate="<b>%{x}</b><br>%{y} movies<extra></extra>"))
+                fig2.update_layout(**CL(320),bargap=0.25)
+                st.markdown('<div class="chart-card"><div class="chart-title">📅 Movies by Decade</div><div class="chart-sub">Catalogue distribution across release decades</div>',unsafe_allow_html=True)
+                st.plotly_chart(fig2,use_container_width=True,config=dict(displayModeBar=False))
+                st.markdown('</div>',unsafe_allow_html=True)
+
+            c3,c4=st.columns(2)
+            with c3:
+                fig3=go.Figure(go.Pie(values=rc.values,labels=[f"{r}★" for r in rc.index],hole=0.55,
+                    marker=dict(colors=[BG2,"#0E3D6E",BLUE,"#0EA5E9",CYAN],line=dict(color="#08141E",width=2)),
+                    hovertemplate="<b>%{label}</b><br>%{value:,} (%{percent})<extra></extra>"))
+                fig3.add_annotation(text=f"{R['Movie-Rating'].mean():.1f}★",x=0.5,y=0.5,
+                    font=dict(size=20,color="white",family="Inter"),showarrow=False)
+                fig3.update_layout(**CL(320),showlegend=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">🍩 Rating Share</div><div class="chart-sub">Proportion of each star rating</div>',unsafe_allow_html=True)
+                st.plotly_chart(fig3,use_container_width=True,config=dict(displayModeBar=False))
+                st.markdown('</div>',unsafe_allow_html=True)
+
+            with c4:
+                fig4=go.Figure(go.Histogram(x=U['Num-Ratings'],nbinsx=40,
+                    marker=dict(color=BLUE,opacity=0.8,line=dict(color=BG,width=0.3)),
+                    hovertemplate="<b>%{x} ratings</b><br>%{y} users<extra></extra>"))
+                fig4.update_layout(**CL(320))
+                st.markdown('<div class="chart-card"><div class="chart-title">👥 User Activity Distribution</div><div class="chart-sub">How many ratings each user has given</div>',unsafe_allow_html=True)
+                st.plotly_chart(fig4,use_container_width=True,config=dict(displayModeBar=False))
+                st.markdown('</div>',unsafe_allow_html=True)
+
+            top15=stats.nlargest(15,'total')
+            fig5=go.Figure(go.Bar(x=top15['total'],y=top15['Movie-Title'],orientation='h',
+                marker=dict(color=top15['avg'],colorscale=SCALE2,cmin=1,cmax=5,
+                            colorbar=dict(title=dict(text="Avg★",font=dict(color=TEXT)),tickfont=dict(color=TEXT))),
+                text=[f"  ★{v:.1f}" for v in top15['avg']],textposition='inside',textfont=dict(color='white',size=11),
+                hovertemplate="<b>%{y}</b><br>%{x:,} ratings<extra></extra>"))
+            fig5.update_layout(**CL(420),yaxis=dict(autorange='reversed',gridcolor=GRID,color=MUTED))
+            st.markdown('<br><div class="chart-card"><div class="chart-title">🏆 Top 15 Most Rated Movies</div><div class="chart-sub">Colour intensity = average star rating</div>',unsafe_allow_html=True)
+            st.plotly_chart(fig5,use_container_width=True,config=dict(displayModeBar=False))
+            st.markdown('</div>',unsafe_allow_html=True)
+
+        # ════ TAB 2 — RECOMMENDER ════
+        with t2:
+            st.markdown('<div class="section-header"><div class="section-title">Knowledge-Based Recommender</div><div class="section-line"></div><div class="section-sub">Cosine similarity · Top-5 user neighbours</div></div>',unsafe_allow_html=True)
+            st.markdown('<div class="rec-panel">',unsafe_allow_html=True)
+            ri1,ri2,ri3=st.columns([2,2,1])
+            default_uid=int(combined['User-ID'].value_counts().index[0])
+            uid_in=ri1.number_input("User ID",min_value=1,max_value=int(combined['User-ID'].max()),value=default_uid,step=1)
+            n_recs=ri2.slider("Recommendations",4,20,12)
+            ri3.markdown("<br>",unsafe_allow_html=True)
+            go_btn=ri3.button("🎯  Recommend",use_container_width=True)
+
+            if go_btn:
+                with st.spinner("Finding your perfect movies..."):
+                    recs=rec(combined,M,int(uid_in),mat,n_recs)
+                if recs.empty:
+                    st.warning("No recommendations found. Try a different User ID.")
+                else:
+                    st.markdown(f"<br><div style='font-size:0.8rem;color:{MUTED};margin-bottom:14px'>Showing <strong style='color:{TEXT}'>{len(recs)}</strong> recommendations for User <strong style='color:{CYAN}'>{uid_in}</strong></div>",unsafe_allow_html=True)
+                    st.markdown('<div class="movie-grid">',unsafe_allow_html=True)
+                    for _,row in recs.iterrows():
+                        c1f,c2f=grad(row['Movie-ID'])
+                        st.markdown(f"""
+                        <div class="movie-card">
+                          <div class="movie-poster" style="background:linear-gradient(135deg,{c1f},{c2f})">
+                            <span style="font-size:2.8rem;z-index:1">{icon(row['Movie-ID'])}</span>
+                            <div class="movie-poster-id">ID #{row['Movie-ID']}</div>
+                          </div>
+                          <div class="movie-body">
+                            <div class="movie-title-card">{row['Movie-Title']}</div>
+                            <div class="movie-year">📅 {int(row['Year-Of-Release'])}</div>
+                            <div class="movie-badge">Recommended</div>
+                          </div>
+                        </div>""",unsafe_allow_html=True)
+                    st.markdown('</div>',unsafe_allow_html=True)
+
+                    fig_rec=go.Figure(go.Bar(x=recs['Movie-Title'],y=recs['Year-Of-Release'],
+                        marker=dict(color=recs['Year-Of-Release'],colorscale=[[0,BLUE],[1,CYAN]],
+                                    line=dict(color=BG,width=1)),
+                        hovertemplate="<b>%{x}</b><br>Released: %{y}<extra></extra>"))
+                    fig_rec.update_layout(**CL(280),xaxis=dict(tickangle=-32,gridcolor=GRID,color=MUTED))
+                    st.markdown('<br><div class="chart-card"><div class="chart-title">Release Years of Recommended Movies</div>',unsafe_allow_html=True)
+                    st.plotly_chart(fig_rec,use_container_width=True,config=dict(displayModeBar=False))
+                    st.markdown('</div>',unsafe_allow_html=True)
+
+            st.markdown('</div>',unsafe_allow_html=True)
+
+            st.markdown('<div class="section-header" style="margin-top:32px"><div class="section-title">User Profile Lookup</div><div class="section-line"></div></div>',unsafe_allow_html=True)
+            pp1,pp2=st.columns([3,1])
+            uid_p=pp1.number_input("User ID for profile",value=default_uid,step=1)
+            pp2.markdown("<br>",unsafe_allow_html=True)
+            prof_btn=pp2.button("🔎  View Profile",use_container_width=True)
+            if prof_btn:
+                um=R[R['User-ID']==uid_p].merge(M,on='Movie-ID')
+                ui=U[U['User-ID']==uid_p]
+                if um.empty: st.warning("User not found.")
+                else:
+                    pm1,pm2,pm3=st.columns(3)
+                    pm1.metric("Movies Rated",len(um))
+                    pm2.metric("Avg Rating Given",f"{um['Movie-Rating'].mean():.2f} ★")
+                    pm3.metric("Platform Avg",f"{ui['Avg-Rating'].values[0]:.2f} ★" if len(ui) else "N/A")
+                    fig_p=go.Figure(go.Bar(x=um['Movie-Title'],y=um['Movie-Rating'],
+                        marker=dict(color=um['Movie-Rating'],colorscale=SCALE2,cmin=1,cmax=5,
+                                    line=dict(color=BG,width=0.5)),
+                        hovertemplate="<b>%{x}</b><br>%{y}★<extra></extra>"))
+                    fig_p.update_layout(**CL(280),xaxis=dict(tickangle=-35,gridcolor=GRID))
+                    st.markdown('<div class="chart-card"><div class="chart-title">Rating History</div>',unsafe_allow_html=True)
+                    st.plotly_chart(fig_p,use_container_width=True,config=dict(displayModeBar=False))
+                    st.markdown('</div>',unsafe_allow_html=True)
+
+        # ════ TAB 3 — ANALYTICS ════
+        with t3:
+            st.markdown('<div class="section-header"><div class="section-title">Deep Analytics</div><div class="section-line"></div></div>',unsafe_allow_html=True)
+            yearly=M.groupby('Year-Of-Release').size().reset_index(name='count')
+            fig_y=go.Figure(go.Scatter(x=yearly['Year-Of-Release'],y=yearly['count'],fill='tozeroy',mode='lines',
+                line=dict(color=BLUE,width=2),fillcolor="rgba(28,110,164,0.12)",
+                hovertemplate="<b>%{x}</b><br>%{y} movies<extra></extra>"))
+            fig_y.update_layout(**CL(260))
+            st.markdown('<div class="chart-card"><div class="chart-title">Production Timeline</div><div class="chart-sub">Number of movies released each year</div>',unsafe_allow_html=True)
+            st.plotly_chart(fig_y,use_container_width=True,config=dict(displayModeBar=False))
+            st.markdown('</div>',unsafe_allow_html=True)
+
+            ca,cb=st.columns(2)
+            with ca:
+                avy=R.merge(M,on='Movie-ID').groupby('Year-Of-Release')['Movie-Rating'].mean().reset_index()
+                fig_avy=go.Figure(go.Scatter(x=avy['Year-Of-Release'],y=avy['Movie-Rating'],fill='tozeroy',
+                    mode='lines+markers',line=dict(color=CYAN,width=2),fillcolor="rgba(0,201,255,0.07)",
+                    marker=dict(size=4,color=CYAN),hovertemplate="<b>%{x}</b><br>%{y:.2f}★<extra></extra>"))
+                fig_avy.add_hline(y=R['Movie-Rating'].mean(),line_dash="dash",line_color=ORANGE,
+                    annotation_text=f"Avg {R['Movie-Rating'].mean():.2f}★",annotation_font_color=ORANGE,annotation_position="top right")
+                fig_avy.update_layout(**CL(300))
+                st.markdown('<div class="chart-card"><div class="chart-title">Avg Rating by Release Year</div><div class="chart-sub">Does era affect how well movies are rated?</div>',unsafe_allow_html=True)
+                st.plotly_chart(fig_avy,use_container_width=True,config=dict(displayModeBar=False))
+                st.markdown('</div>',unsafe_allow_html=True)
+
+            with cb:
+                rpm=R.groupby('Movie-ID').size().reset_index(name='count')
+                fig_rpm=go.Figure(go.Histogram(x=rpm['count'],nbinsx=40,
+                    marker=dict(color=ORANGE,opacity=0.85,line=dict(color=BG,width=0.5))))
+                fig_rpm.update_layout(**CL(300))
+                st.markdown('<div class="chart-card"><div class="chart-title">Ratings Per Movie</div><div class="chart-sub">How many ratings does each movie receive?</div>',unsafe_allow_html=True)
+                st.plotly_chart(fig_rpm,use_container_width=True,config=dict(displayModeBar=False))
+                st.markdown('</div>',unsafe_allow_html=True)
+
+            top_r=stats.query('total>=50').nlargest(20,'avg')
+            fig_tr=go.Figure(go.Bar(x=top_r['avg'],y=top_r['Movie-Title'],orientation='h',
+                marker=dict(color=top_r['total'],colorscale=[[0,BLUE],[1,CYAN]],
+                            colorbar=dict(title=dict(text="# Ratings",font=dict(color=TEXT)),tickfont=dict(color=TEXT))),
+                text=[f"  {v:.2f}★" for v in top_r['avg']],textposition='inside',textfont=dict(color='white',size=10),
+                hovertemplate="<b>%{y}</b><br>%{x:.2f}★<extra></extra>"))
+            fig_tr.update_layout(**CL(460),yaxis=dict(autorange='reversed'))
+            st.markdown('<br><div class="chart-card"><div class="chart-title">Top 20 Highest Rated Movies (≥50 ratings)</div><div class="chart-sub">Colour = number of ratings received</div>',unsafe_allow_html=True)
+            st.plotly_chart(fig_tr,use_container_width=True,config=dict(displayModeBar=False))
+            st.markdown('</div>',unsafe_allow_html=True)
+
+            md=R.merge(M,on='Movie-ID'); md['Decade']=(md['Year-Of-Release']//10*10).astype(str)+"s"
+            fig_box=px.box(md.sort_values('Year-Of-Release'),x='Decade',y='Movie-Rating',color='Decade',
+                color_discrete_sequence=[BG2,"#0E3D6E",BLUE,"#0EA5E9",CYAN,ORANGE,GREEN])
+            fig_box.update_layout(**CL(340))
+            st.markdown('<br><div class="chart-card"><div class="chart-title">Rating Box Plot by Decade</div><div class="chart-sub">Median, spread, and outliers per era</div>',unsafe_allow_html=True)
+            st.plotly_chart(fig_box,use_container_width=True,config=dict(displayModeBar=False))
+            st.markdown('</div>',unsafe_allow_html=True)
+
+            cc,cd=st.columns(2)
+            with cc:
+                fig_ua=go.Figure(go.Histogram(x=U['Avg-Rating'],nbinsx=40,
+                    marker=dict(color=GREEN,opacity=0.8,line=dict(color=BG,width=0.3))))
+                fig_ua.add_vline(x=U['Avg-Rating'].mean(),line_dash="dash",line_color=ORANGE,
+                    annotation_text=f"Mean {U['Avg-Rating'].mean():.2f}★",annotation_font_color=ORANGE)
+                fig_ua.update_layout(**CL(300))
+                st.markdown('<div class="chart-card"><div class="chart-title">User Generosity Distribution</div><div class="chart-sub">Average rating each user gives</div>',unsafe_allow_html=True)
+                st.plotly_chart(fig_ua,use_container_width=True,config=dict(displayModeBar=False))
+                st.markdown('</div>',unsafe_allow_html=True)
+
+            with cd:
+                samp=R.sample(min(2000,len(R)),random_state=42).merge(U,on='User-ID')
+                fig_sc=go.Figure(go.Scatter(x=samp['Avg-Rating'],y=samp['Movie-Rating'],mode='markers',
+                    marker=dict(color=samp['Movie-Rating'],colorscale=SCALE2,cmin=1,cmax=5,size=4,opacity=0.5),
+                    hovertemplate="Avg: %{x:.1f}★<br>Rating: %{y}★<extra></extra>"))
+                fig_sc.update_layout(**CL(300))
+                st.markdown('<div class="chart-card"><div class="chart-title">Individual Rating vs User Average</div><div class="chart-sub">Does a user\'s typical rating predict each rating?</div>',unsafe_allow_html=True)
+                st.plotly_chart(fig_sc,use_container_width=True,config=dict(displayModeBar=False))
+                st.markdown('</div>',unsafe_allow_html=True)
+
+        # ════ TAB 4 — CORRELATIONS ════
+        with t4:
+            st.markdown('<div class="section-header"><div class="section-title">Correlations & Relationships</div><div class="section-line"></div></div>',unsafe_allow_html=True)
+            corr_df=stats[['total','avg','std','Year-Of-Release']].rename(
+                columns={'total':'Total Ratings','avg':'Avg Rating','std':'Rating Std','Year-Of-Release':'Release Year'}).corr()
+            fig_heat=px.imshow(corr_df,text_auto='.3f',
+                color_continuous_scale=[[0,'#7B0000'],[0.5,BG2],[1,BLUE]],zmin=-1,zmax=1,aspect='auto')
+            fig_heat.update_layout(paper_bgcolor=BG,plot_bgcolor=BG,font=dict(family="Inter",color=TEXT),
+                height=320,margin=dict(t=16,b=16,l=16,r=16),
+                coloraxis_colorbar=dict(tickfont=dict(color=TEXT),title=dict(text="r",font=dict(color=TEXT))))
+            fig_heat.update_traces(textfont=dict(size=14,color="white"))
+            st.markdown('<div class="chart-card"><div class="chart-title">🌡️ Feature Correlation Heatmap</div><div class="chart-sub">Pearson r between all numeric features</div>',unsafe_allow_html=True)
+            st.plotly_chart(fig_heat,use_container_width=True,config=dict(displayModeBar=False))
+            st.markdown('</div>',unsafe_allow_html=True)
+
+            pairs=[(('total','avg','Total Ratings','Avg Rating','Popularity vs Quality',"Do popular movies rate better?"),
+                    ('Year-Of-Release','avg','Release Year','Avg Rating','Era vs Quality',"Do newer films rate higher?")),
+                   (('avg','std','Avg Rating','Rating Std','Consistency vs Quality',"Are polarising movies rated lower?"),
+                    ('Num-Ratings','Avg-Rating','User # Ratings','User Avg Rating','Activity vs Generosity',"Do prolific users rate differently?"))]
+            for row_pair in pairs:
+                c1,c2=st.columns(2)
+                for col,(xc,yc,xl,yl,title,sub) in zip([c1,c2],row_pair):
+                    src=stats if xc in stats.columns else U.sample(min(3000,len(U)),random_state=42)
+                    fig_c=px.scatter(src,x=xc,y=yc,trendline='ols',color=yc,color_continuous_scale=SCALE2,
+                        opacity=0.55,labels={xc:xl,yc:yl},hover_data=['Movie-Title'] if 'Movie-Title' in src.columns else None)
+                    fig_c.update_traces(marker=dict(size=5))
+                    fig_c.update_layout(**CL(300),coloraxis_showscale=False)
+                    r=src[xc].corr(src[yc])
+                    with col:
+                        st.markdown(f'<div class="chart-card"><div class="chart-title">{title}</div><div class="chart-sub">{sub}</div>',unsafe_allow_html=True)
+                        st.plotly_chart(fig_c,use_container_width=True,config=dict(displayModeBar=False))
+                        st.markdown(f'<div class="corr-badge">Pearson r <span class="corr-val">{r:+.4f}</span></div>',unsafe_allow_html=True)
+                        st.markdown('</div>',unsafe_allow_html=True)
+
+            fig_vio=go.Figure()
+            for rat in sorted(R['Movie-Rating'].unique()):
+                sub_r=R[R['Movie-Rating']==rat]
+                fig_vio.add_trace(go.Violin(y=sub_r['Movie-Rating'],x=[f"{rat}★"]*len(sub_r),name=f"{rat}★",
+                    box_visible=True,meanline_visible=True,fillcolor=BLUE,line_color=CYAN,opacity=0.7))
+            fig_vio.update_layout(**CL(320))
+            st.markdown('<br><div class="chart-card"><div class="chart-title">🎻 Rating Violin Plot</div><div class="chart-sub">Distribution shape for each star rating</div>',unsafe_allow_html=True)
+            st.plotly_chart(fig_vio,use_container_width=True,config=dict(displayModeBar=False))
+            st.markdown('</div>',unsafe_allow_html=True)
+
+            s3d=stats.sample(min(600,len(stats)),random_state=42)
+            fig_3d=go.Figure(go.Scatter3d(x=s3d['Year-Of-Release'],y=s3d['avg'],z=s3d['total'],mode='markers',
+                marker=dict(size=4,color=s3d['avg'],colorscale=SCALE2,cmin=1,cmax=5,opacity=0.8,
+                            colorbar=dict(title=dict(text="Avg★",font=dict(color=TEXT)),tickfont=dict(color=TEXT))),
+                text=s3d['Movie-Title'],
+                hovertemplate="<b>%{text}</b><br>Year: %{x}<br>Rating: %{y:.2f}★<br>Total: %{z}<extra></extra>"))
+            fig_3d.update_layout(paper_bgcolor=BG,font=dict(family="Inter",color=TEXT),
+                scene=dict(xaxis=dict(backgroundcolor=BG2,gridcolor=GRID,color=MUTED,title="Year"),
+                           yaxis=dict(backgroundcolor=BG2,gridcolor=GRID,color=MUTED,title="Avg Rating"),
+                           zaxis=dict(backgroundcolor=BG2,gridcolor=GRID,color=MUTED,title="Total Ratings")),
+                height=480,margin=dict(t=16,b=0,l=0,r=0))
+            st.markdown('<br><div class="chart-card"><div class="chart-title">🧊 3D: Year × Avg Rating × Total Ratings</div><div class="chart-sub">Hover to see movie names · Drag to rotate</div>',unsafe_allow_html=True)
+            st.plotly_chart(fig_3d,use_container_width=True,config=dict(displayModeBar=False))
+            st.markdown('</div>',unsafe_allow_html=True)
+
+        # ════ TAB 5 — EXPLORER ════
+        with t5:
+            st.markdown('<div class="section-header"><div class="section-title">Data Explorer</div><div class="section-line"></div></div>',unsafe_allow_html=True)
+            e1,e2,e3=st.tabs(["🎬  Movies","⭐  Ratings","👥  Users"])
+            with e1:
+                sc1,sc2=st.columns(2)
+                yr=sc1.slider("Year range",int(M['Year-Of-Release'].min()),int(M['Year-Of-Release'].max()),(1990,2005))
+                srch=sc2.text_input("Search title",placeholder="e.g. Titanic")
+                mf=M[(M['Year-Of-Release']>=yr[0])&(M['Year-Of-Release']<=yr[1])]
+                if srch: mf=mf[mf['Movie-Title'].str.contains(srch,case=False,na=False)]
+                st.markdown(f"<div style='font-size:0.78rem;color:{MUTED};margin-bottom:8px'>{len(mf):,} results</div>",unsafe_allow_html=True)
+                st.dataframe(mf.reset_index(drop=True),use_container_width=True,height=380)
+                st.download_button("⬇️ Download filtered movies",mf.to_csv(index=False),"movies_filtered.csv","text/csv")
+            with e2:
+                rf=st.multiselect("Filter by rating",[1,2,3,4,5],default=[1,2,3,4,5])
+                rd=R[R['Movie-Rating'].isin(rf)]
+                st.dataframe(rd.sample(min(500,len(rd)),random_state=42).reset_index(drop=True),use_container_width=True,height=380)
+                st.download_button("⬇️ Download ratings",R.to_csv(index=False),"ratings.csv","text/csv")
+            with e3:
+                st.dataframe(U.reset_index(drop=True),use_container_width=True,height=380)
+                st.download_button("⬇️ Download users",U.to_csv(index=False),"users.csv","text/csv")
+
+        st.markdown('</div>',unsafe_allow_html=True)
+
     except FileNotFoundError as e:
-        st.error(f"❌  File not found: {e}\n\nUpdate the paths in the sidebar.")
-        st.stop()
-
-    # ── TABS ─────────────────────────────────
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📊 Overview",
-        "🔍 Recommender",
-        "📈 Analytics",
-        "🔗 Correlations",
-        "🗂️ Data Explorer"
-    ])
-
-    # ═══════════════════════════════════════════
-    # TAB 1 — OVERVIEW
-    # ═══════════════════════════════════════════
-    with tab1:
-        # KPI row
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("🎬 Total Movies",   f"{len(moviesData):,}")
-        c2.metric("⭐ Total Ratings",  f"{len(ratingsData):,}")
-        c3.metric("👥 Total Users",    f"{len(userData):,}")
-        c4.metric("📅 Year Range",     f"{int(moviesData['Year-Of-Release'].min())}–{int(moviesData['Year-Of-Release'].max())}")
-        c5.metric("⭐ Avg Rating",      f"{ratingsData['Movie-Rating'].mean():.2f} / 5")
-
-        st.divider()
-
-        col_a, col_b = st.columns(2)
-
-        # Rating distribution bar chart
-        with col_a:
-            rating_counts = ratingsData['Movie-Rating'].value_counts().sort_index()
-            fig = px.bar(
-                x=rating_counts.index,
-                y=rating_counts.values,
-                labels={'x': 'Star Rating', 'y': 'Number of Ratings'},
-                title="⭐ Rating Distribution",
-                color=rating_counts.values,
-                color_continuous_scale=[[0, "#1A242F"], [0.5, PRIME_BLUE], [1, PRIME_ACCENT]],
-            )
-            fig.update_layout(**CHART_LAYOUT, coloraxis_showscale=False)
-            fig.update_traces(marker_line_color=PRIME_BLUE, marker_line_width=1)
-            st.plotly_chart(fig, use_container_width=True)
-
-        # Movies per decade
-        with col_b:
-            moviesData['Decade'] = (moviesData['Year-Of-Release'] // 10 * 10).astype(str) + 's'
-            decade_counts = moviesData['Decade'].value_counts().sort_index()
-            fig2 = px.bar(
-                x=decade_counts.index,
-                y=decade_counts.values,
-                labels={'x': 'Decade', 'y': 'Number of Movies'},
-                title="📅 Movies by Decade",
-                color=decade_counts.values,
-                color_continuous_scale=[[0, "#1A242F"], [0.5, PRIME_BLUE], [1, PRIME_ACCENT]],
-            )
-            fig2.update_layout(**CHART_LAYOUT, coloraxis_showscale=False)
-            st.plotly_chart(fig2, use_container_width=True)
-
-        col_c, col_d = st.columns(2)
-
-        # Rating pie chart
-        with col_c:
-            fig3 = px.pie(
-                values=rating_counts.values,
-                names=[f"{r} Star{'s' if r>1 else ''}" for r in rating_counts.index],
-                title="⭐ Rating Share",
-                color_discrete_sequence=[PRIME_BLUE, PRIME_ACCENT, "#00C853", "#FF5252", "#AA00FF"],
-                hole=0.4,
-            )
-            fig3.update_layout(**CHART_LAYOUT)
-            st.plotly_chart(fig3, use_container_width=True)
-
-        # User activity distribution
-        with col_d:
-            fig4 = px.histogram(
-                userData,
-                x='Num-Ratings',
-                nbins=50,
-                title="👥 User Activity Distribution (# Ratings per User)",
-                labels={'Num-Ratings': 'Number of Ratings', 'count': 'Users'},
-                color_discrete_sequence=[PRIME_BLUE],
-            )
-            fig4.update_layout(**CHART_LAYOUT)
-            st.plotly_chart(fig4, use_container_width=True)
-
-        # Top 15 most rated movies
-        top_movies = (
-            ratingsData.groupby('Movie-ID')
-            .agg(total_ratings=('Movie-Rating', 'count'), avg_rating=('Movie-Rating', 'mean'))
-            .reset_index()
-            .merge(moviesData[['Movie-ID', 'Movie-Title']], on='Movie-ID')
-            .sort_values('total_ratings', ascending=False)
-            .head(15)
-        )
-        fig5 = px.bar(
-            top_movies,
-            x='total_ratings',
-            y='Movie-Title',
-            orientation='h',
-            title="🏆 Top 15 Most Rated Movies",
-            labels={'total_ratings': 'Total Ratings', 'Movie-Title': ''},
-            color='avg_rating',
-            color_continuous_scale=[[0, "#1A242F"], [0.5, PRIME_BLUE], [1, PRIME_ACCENT]],
-            color_continuous_midpoint=3,
-        )
-        fig5.update_layout(**CHART_LAYOUT, height=450,
-                           coloraxis_colorbar=dict(title="Avg ⭐", tickfont=dict(color='white')))
-        fig5.update_yaxes(autorange='reversed')
-        st.plotly_chart(fig5, use_container_width=True)
-
-    # ═══════════════════════════════════════════
-    # TAB 2 — RECOMMENDER
-    # ═══════════════════════════════════════════
-    with tab2:
-        st.markdown("### 🔍 Knowledge-Based Movie Recommender")
-        st.markdown("Uses **cosine similarity** between users to find the 5 most similar users, then recommends their top-rated movies.")
-
-        col_r1, col_r2 = st.columns([2, 1])
-        with col_r1:
-            valid_users = combined_df['User-ID'].unique().tolist()
-            default_user = int(combined_df['User-ID'].value_counts().index[0])
-            user_id_input = st.number_input(
-                "Enter User ID", min_value=int(min(valid_users)),
-                max_value=int(max(valid_users)), value=default_user, step=1
-            )
-        with col_r2:
-            st.markdown("<br>", unsafe_allow_html=True)
-            recommend_btn = st.button("🎬 Get Recommendations", use_container_width=True)
-
-        if recommend_btn:
-            with st.spinner("Finding similar users and recommending movies..."):
-                recs = knowledge_based_recommender(
-                    combined_df, moviesData, int(user_id_input), matrix, n=n_recs
-                )
-
-            if recs.empty:
-                st.warning("No recommendations found for this user. Try a different User ID.")
-            else:
-                # Apply filters from sidebar
-                recs = recs[recs['Year-Of-Release'] >= min_year]
-
-                st.markdown(f"#### 🎯 Top {len(recs)} Recommendations for User `{user_id_input}`")
-
-                for _, row in recs.iterrows():
-                    st.markdown(f"""
-                    <div class='prime-card'>
-                        <div class='prime-title'>🎬 {row['Movie-Title']}</div>
-                        <div class='prime-sub'>📅 Year: {int(row['Year-Of-Release'])} &nbsp;|&nbsp; 🆔 Movie ID: {row['Movie-ID']}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                # Visualise recommendations
-                fig_rec = px.bar(
-                    recs,
-                    x='Movie-Title',
-                    y='Year-Of-Release',
-                    title=f"📅 Release Year of Recommended Movies",
-                    labels={'Movie-Title': 'Movie', 'Year-Of-Release': 'Year'},
-                    color='Year-Of-Release',
-                    color_continuous_scale=[[0, PRIME_BLUE], [1, PRIME_ACCENT]],
-                )
-                fig_rec.update_layout(**CHART_LAYOUT, xaxis_tickangle=-35)
-                fig_rec.update_layout(coloraxis_showscale=False)
-                st.plotly_chart(fig_rec, use_container_width=True)
-
-        st.divider()
-        st.markdown("### 👤 User Profile")
-        uid_profile = st.number_input("User ID for Profile", value=default_user, step=1, key='profile_uid')
-        if st.button("🔎 Show Profile"):
-            user_movies = ratingsData[ratingsData['User-ID'] == uid_profile].merge(
-                moviesData, on='Movie-ID'
-            )
-            user_info = userData[userData['User-ID'] == uid_profile]
-
-            if user_movies.empty:
-                st.warning("User not found or has no ratings.")
-            else:
-                ua, ub, uc = st.columns(3)
-                ua.metric("Movies Rated", len(user_movies))
-                ub.metric("Avg Given Rating", f"{user_movies['Movie-Rating'].mean():.2f}")
-                uc.metric("Platform Avg Rating", f"{user_info['Avg-Rating'].values[0]:.2f}")
-
-                fig_p = px.bar(
-                    user_movies,
-                    x='Movie-Title',
-                    y='Movie-Rating',
-                    title="User's Rating History",
-                    color='Movie-Rating',
-                    color_continuous_scale=[[0,'#FF5252'],[0.5, PRIME_BLUE],[1, '#00C853']],
-                )
-                fig_p.update_layout(**CHART_LAYOUT, xaxis_tickangle=-35, coloraxis_showscale=False)
-                st.plotly_chart(fig_p, use_container_width=True)
-
-    # ═══════════════════════════════════════════
-    # TAB 3 — ANALYTICS
-    # ═══════════════════════════════════════════
-    with tab3:
-        st.markdown("### 📈 Deep Analytics")
-
-        # Movies over time line chart
-        yearly = moviesData.groupby('Year-Of-Release').size().reset_index(name='count')
-        fig_y = px.line(
-            yearly, x='Year-Of-Release', y='count',
-            title="📅 Movies Released Per Year",
-            labels={'Year-Of-Release': 'Year', 'count': 'Movies'},
-            color_discrete_sequence=[PRIME_BLUE],
-            markers=True,
-        )
-        fig_y.update_layout(**CHART_LAYOUT)
-        fig_y.update_traces(line_width=2, marker_size=4)
-        st.plotly_chart(fig_y, use_container_width=True)
-
-        col_e, col_f = st.columns(2)
-
-        # Avg rating per year
-        with col_e:
-            avg_by_year = (
-                ratingsData.merge(moviesData, on='Movie-ID')
-                .groupby('Year-Of-Release')['Movie-Rating']
-                .mean()
-                .reset_index()
-            )
-            fig_ay = px.area(
-                avg_by_year, x='Year-Of-Release', y='Movie-Rating',
-                title="⭐ Average Rating by Release Year",
-                labels={'Year-Of-Release': 'Year', 'Movie-Rating': 'Avg Rating'},
-                color_discrete_sequence=[PRIME_BLUE],
-            )
-            fig_ay.update_layout(**CHART_LAYOUT)
-            fig_ay.add_hline(y=ratingsData['Movie-Rating'].mean(),
-                             line_dash="dash", line_color=PRIME_ACCENT,
-                             annotation_text="Overall Avg", annotation_font_color=PRIME_ACCENT)
-            st.plotly_chart(fig_ay, use_container_width=True)
-
-        # Ratings count per movie histogram
-        with col_f:
-            ratings_per_movie = ratingsData.groupby('Movie-ID').size().reset_index(name='count')
-            fig_rpm = px.histogram(
-                ratings_per_movie, x='count', nbins=50,
-                title="📊 Ratings Per Movie Distribution",
-                labels={'count': 'Number of Ratings', 'y': 'Movies'},
-                color_discrete_sequence=[PRIME_ACCENT],
-            )
-            fig_rpm.update_layout(**CHART_LAYOUT)
-            st.plotly_chart(fig_rpm, use_container_width=True)
-
-        # Top rated movies (min 50 ratings)
-        st.markdown("#### 🏅 Top Rated Movies (minimum 50 ratings)")
-        top_rated = (
-            ratingsData.groupby('Movie-ID')
-            .agg(avg=('Movie-Rating','mean'), count=('Movie-Rating','count'))
-            .reset_index()
-            .query('count >= 50')
-            .merge(moviesData, on='Movie-ID')
-            .sort_values('avg', ascending=False)
-            .head(20)
-        )
-        fig_tr = px.bar(
-            top_rated, x='avg', y='Movie-Title', orientation='h',
-            title="🏅 Top 20 Highest Rated Movies (≥50 ratings)",
-            labels={'avg': 'Average Rating', 'Movie-Title': ''},
-            color='count',
-            color_continuous_scale=[[0, PRIME_BLUE],[1, PRIME_ACCENT]],
-        )
-        fig_tr.update_layout(**CHART_LAYOUT, height=500,
-                             coloraxis_colorbar=dict(title="# Ratings", tickfont=dict(color='white')))
-        fig_tr.update_yaxes(autorange='reversed')
-        st.plotly_chart(fig_tr, use_container_width=True)
-
-        # User avg rating distribution
-        col_g, col_h = st.columns(2)
-        with col_g:
-            fig_ua = px.histogram(
-                userData, x='Avg-Rating', nbins=40,
-                title="📊 User Average Rating Distribution",
-                labels={'Avg-Rating': 'Avg Rating Given', 'count': 'Users'},
-                color_discrete_sequence=[PRIME_BLUE],
-            )
-            fig_ua.update_layout(**CHART_LAYOUT)
-            fig_ua.add_vline(x=userData['Avg-Rating'].mean(), line_dash='dash',
-                             line_color=PRIME_ACCENT,
-                             annotation_text=f"Mean {userData['Avg-Rating'].mean():.2f}",
-                             annotation_font_color=PRIME_ACCENT)
-            st.plotly_chart(fig_ua, use_container_width=True)
-
-        with col_h:
-            # Rating given vs user's avg rating scatter (sample)
-            sample = ratingsData.sample(min(3000, len(ratingsData)), random_state=42).merge(userData, on='User-ID')
-            fig_sc = px.scatter(
-                sample, x='Avg-Rating', y='Movie-Rating',
-                title="🔵 Individual Rating vs User Avg Rating",
-                labels={'Avg-Rating': 'User Avg Rating', 'Movie-Rating': 'This Rating'},
-                color='Movie-Rating',
-                color_continuous_scale=[[0,'#FF5252'],[0.5, PRIME_BLUE],[1,'#00C853']],
-                opacity=0.5,
-            )
-            fig_sc.update_layout(**CHART_LAYOUT, coloraxis_showscale=False)
-            st.plotly_chart(fig_sc, use_container_width=True)
-
-        # Decade box plot
-        merged_decade = ratingsData.merge(moviesData, on='Movie-ID')
-        merged_decade['Decade'] = (merged_decade['Year-Of-Release'] // 10 * 10).astype(str) + 's'
-        fig_box = px.box(
-            merged_decade.sort_values('Year-Of-Release'),
-            x='Decade', y='Movie-Rating',
-            title="📦 Rating Distribution by Decade",
-            labels={'Decade': 'Decade', 'Movie-Rating': 'Rating'},
-            color='Decade',
-            color_discrete_sequence=px.colors.qualitative.Bold,
-        )
-        fig_box.update_layout(**CHART_LAYOUT)
-        st.plotly_chart(fig_box, use_container_width=True)
-
-    # ═══════════════════════════════════════════
-    # TAB 4 — CORRELATIONS
-    # ═══════════════════════════════════════════
-    with tab4:
-        st.markdown("### 🔗 Correlations & Relationships")
-
-        # Build enriched df
-        enriched = (
-            ratingsData.groupby('Movie-ID')
-            .agg(total_ratings=('Movie-Rating','count'), avg_rating=('Movie-Rating','mean'),
-                 rating_std=('Movie-Rating','std'))
-            .reset_index()
-            .merge(moviesData, on='Movie-ID')
-        )
-        enriched['rating_std'] = enriched['rating_std'].fillna(0)
-
-        # Scatter: total ratings vs avg rating
-        col_i, col_j = st.columns(2)
-        with col_i:
-            fig_corr1 = px.scatter(
-                enriched, x='total_ratings', y='avg_rating',
-                title="📊 Total Ratings vs Avg Rating per Movie",
-                labels={'total_ratings':'Total Ratings','avg_rating':'Avg Rating'},
-                color='avg_rating',
-                color_continuous_scale=[[0,'#FF5252'],[0.5,PRIME_BLUE],[1,'#00C853']],
-                trendline='ols',
-                hover_data=['Movie-Title'],
-                opacity=0.7,
-            )
-            fig_corr1.update_layout(**CHART_LAYOUT, coloraxis_showscale=False)
-            st.plotly_chart(fig_corr1, use_container_width=True)
-            corr1 = enriched['total_ratings'].corr(enriched['avg_rating'])
-            st.info(f"📐 Pearson Correlation: **{corr1:.4f}**")
-
-        # Scatter: year vs avg rating
-        with col_j:
-            fig_corr2 = px.scatter(
-                enriched, x='Year-Of-Release', y='avg_rating',
-                title="📅 Release Year vs Avg Rating",
-                labels={'Year-Of-Release':'Year','avg_rating':'Avg Rating'},
-                color='total_ratings',
-                color_continuous_scale=[[0,PRIME_BLUE],[1,PRIME_ACCENT]],
-                trendline='ols',
-                hover_data=['Movie-Title'],
-                opacity=0.7,
-            )
-            fig_corr2.update_layout(**CHART_LAYOUT,
-                                    coloraxis_colorbar=dict(title="# Ratings", tickfont=dict(color='white')))
-            st.plotly_chart(fig_corr2, use_container_width=True)
-            corr2 = enriched['Year-Of-Release'].corr(enriched['avg_rating'])
-            st.info(f"📐 Pearson Correlation: **{corr2:.4f}**")
-
-        # Correlation heatmap
-        corr_df = enriched[['total_ratings','avg_rating','rating_std','Year-Of-Release']].corr()
-        fig_heat = px.imshow(
-            corr_df,
-            text_auto='.3f',
-            title="🌡️ Feature Correlation Heatmap",
-            color_continuous_scale=[[0,'#FF5252'],[0.5,'#1A242F'],[1,PRIME_BLUE]],
-            zmin=-1, zmax=1,
-            labels=dict(color="Correlation"),
-        )
-        fig_heat.update_layout(**CHART_LAYOUT, height=400)
-        fig_heat.update_traces(textfont_size=14)
-        st.plotly_chart(fig_heat, use_container_width=True)
-
-        # Scatter: rating std vs avg rating (rating consistency)
-        col_k, col_l = st.columns(2)
-        with col_k:
-            fig_corr3 = px.scatter(
-                enriched, x='avg_rating', y='rating_std',
-                title="🎯 Rating Consistency vs Avg Rating",
-                labels={'avg_rating':'Avg Rating','rating_std':'Rating Std Dev'},
-                color='total_ratings',
-                color_continuous_scale=[[0,PRIME_BLUE],[1,PRIME_ACCENT]],
-                trendline='ols',
-                hover_data=['Movie-Title'],
-                opacity=0.7,
-            )
-            fig_corr3.update_layout(**CHART_LAYOUT,
-                                    coloraxis_colorbar=dict(title="# Ratings", tickfont=dict(color='white')))
-            st.plotly_chart(fig_corr3, use_container_width=True)
-            corr3 = enriched['avg_rating'].corr(enriched['rating_std'])
-            st.info(f"📐 Pearson Correlation: **{corr3:.4f}**")
-
-        # User: num ratings vs avg rating
-        with col_l:
-            user_sample = userData.sample(min(5000, len(userData)), random_state=42)
-            fig_corr4 = px.scatter(
-                user_sample, x='Num-Ratings', y='Avg-Rating',
-                title="👥 User Activity vs Avg Rating Given",
-                labels={'Num-Ratings':'# Ratings by User','Avg-Rating':'User Avg Rating'},
-                color='Avg-Rating',
-                color_continuous_scale=[[0,'#FF5252'],[0.5,PRIME_BLUE],[1,'#00C853']],
-                trendline='ols',
-                opacity=0.5,
-            )
-            fig_corr4.update_layout(**CHART_LAYOUT, coloraxis_showscale=False)
-            st.plotly_chart(fig_corr4, use_container_width=True)
-            corr4 = userData['Num-Ratings'].corr(userData['Avg-Rating'])
-            st.info(f"📐 Pearson Correlation: **{corr4:.4f}**")
-
-        # Violin plot: rating distribution per star
-        fig_vio = px.violin(
-            ratingsData, y='Movie-Rating', x='Movie-Rating',
-            title="🎻 Rating Violin Plot",
-            labels={'Movie-Rating':'Star Rating'},
-            color='Movie-Rating',
-            color_discrete_sequence=[PRIME_BLUE, PRIME_ACCENT, '#00C853', '#FF5252', '#AA00FF'],
-            box=True,
-        )
-        fig_vio.update_layout(**CHART_LAYOUT)
-        st.plotly_chart(fig_vio, use_container_width=True)
-
-        # 3D scatter: year, avg_rating, total_ratings
-        st.markdown("#### 🧊 3D: Year × Avg Rating × Total Ratings")
-        fig_3d = px.scatter_3d(
-            enriched.sample(min(1000, len(enriched)), random_state=42),
-            x='Year-Of-Release', y='avg_rating', z='total_ratings',
-            color='avg_rating',
-            color_continuous_scale=[[0,'#FF5252'],[0.5,PRIME_BLUE],[1,'#00C853']],
-            hover_data=['Movie-Title'],
-            title="🧊 3D Scatter: Year × Avg Rating × Total Ratings",
-            labels={'Year-Of-Release':'Year','avg_rating':'Avg Rating','total_ratings':'Total Ratings'},
-            opacity=0.8,
-        )
-        fig_3d.update_layout(
-            paper_bgcolor=PRIME_CARD,
-            font=dict(color='white'),
-            scene=dict(
-                xaxis=dict(backgroundcolor=PRIME_DARK, gridcolor='#2A3A4A', color='white'),
-                yaxis=dict(backgroundcolor=PRIME_DARK, gridcolor='#2A3A4A', color='white'),
-                zaxis=dict(backgroundcolor=PRIME_DARK, gridcolor='#2A3A4A', color='white'),
-            ),
-            coloraxis_showscale=False,
-        )
-        st.plotly_chart(fig_3d, use_container_width=True)
-
-    # ═══════════════════════════════════════════
-    # TAB 5 — DATA EXPLORER
-    # ═══════════════════════════════════════════
-    with tab5:
-        st.markdown("### 🗂️ Data Explorer")
-
-        subtab1, subtab2, subtab3, subtab4 = st.tabs(["🎬 Movies", "⭐ Ratings", "👥 Users", "🔀 Combined"])
-
-        with subtab1:
-            st.markdown(f"**{len(moviesData):,} movies** — filter and explore")
-            year_filter = st.slider("Filter by Year", int(moviesData['Year-Of-Release'].min()),
-                                    int(moviesData['Year-Of-Release'].max()),
-                                    (1990, 2005))
-            df_show = moviesData[(moviesData['Year-Of-Release'] >= year_filter[0]) &
-                                 (moviesData['Year-Of-Release'] <= year_filter[1])]
-            st.dataframe(df_show.reset_index(drop=True), use_container_width=True, height=400)
-            st.download_button("⬇️ Download Movies.csv", df_show.to_csv(index=False),
-                               "movies_filtered.csv", "text/csv")
-
-        with subtab2:
-            st.markdown(f"**{len(ratingsData):,} ratings** — sample view")
-            rating_filter = st.multiselect("Filter by Rating", [1,2,3,4,5], default=[1,2,3,4,5])
-            df_r = ratingsData[ratingsData['Movie-Rating'].isin(rating_filter)]
-            st.dataframe(df_r.sample(min(500, len(df_r)), random_state=42).reset_index(drop=True),
-                         use_container_width=True, height=400)
-            st.download_button("⬇️ Download Ratings.csv", ratingsData.to_csv(index=False),
-                               "ratings.csv", "text/csv")
-
-        with subtab3:
-            st.markdown(f"**{len(userData):,} users**")
-            st.dataframe(userData.reset_index(drop=True), use_container_width=True, height=400)
-            st.download_button("⬇️ Download Users.csv", userData.to_csv(index=False),
-                               "users.csv", "text/csv")
-
-        with subtab4:
-            st.markdown(f"**{len(combined_df):,} combined records**")
-            st.dataframe(combined_df.sample(min(500, len(combined_df)), random_state=42).reset_index(drop=True),
-                         use_container_width=True, height=400)
+        st.error(f"File not found: {e}\n\nCheck the paths in the Configure panel above.")
 
 else:
-    # ── LANDING STATE ──
-    st.markdown("""
-    <div style='text-align:center; padding:60px 20px'>
-        <div style='font-size:5rem'>🎬</div>
-        <div style='font-size:1.6rem; color:#00A8E1; font-weight:700; margin:16px 0'>
-            Welcome to the Movie Recommender Dashboard
-        </div>
-        <div style='color:#AAAAAA; font-size:1rem; max-width:500px; margin:0 auto'>
-            Set the paths to your <code>Movies.csv</code>, <code>Ratings.csv</code>, and
-            <code>Users.csv</code> in the sidebar, then click <strong>🚀 Load Data</strong> to begin.
+    st.markdown(f"""
+    <div style='text-align:center;padding:80px 20px'>
+        <div style='font-size:5rem;margin-bottom:16px'>🎬</div>
+        <div style='font-size:2rem;font-weight:800;background:linear-gradient(135deg,#1C6EA4,#00C9FF);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px'>CineAI · Movie Recommender</div>
+        <div style='color:#4A6275;font-size:1rem;max-width:440px;margin:0 auto 40px;line-height:1.7'>
+            Enter the paths to your three CSV files in the panel above and click <strong style='color:#C5D5E0'>Load</strong> to launch the dashboard.
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-    col1, col2, col3, col4 = st.columns(4)
-    for col, icon, title, desc in [
-        (col1, "📊", "Overview", "KPIs, rating distributions, top movies"),
-        (col2, "🔍", "Recommender", "Knowledge-based collaborative filtering"),
-        (col3, "📈", "Analytics", "Deep dive into trends and patterns"),
-        (col4, "🔗", "Correlations", "Feature relationships and heatmaps"),
-    ]:
-        with col:
-            st.markdown(f"""
-            <div class='prime-card' style='text-align:center'>
-                <div style='font-size:2rem'>{icon}</div>
-                <div style='color:#00A8E1; font-weight:600; margin:8px 0'>{title}</div>
-                <div style='color:#888; font-size:0.8rem'>{desc}</div>
-            </div>
-            """, unsafe_allow_html=True)
